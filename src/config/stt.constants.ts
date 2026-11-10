@@ -63,6 +63,15 @@ export const SPEECH_TO_TEXT_PROVIDERS = [
     streaming: false,
   },
   {
+    id: "deepgram-ws-stt",
+    name: "Deepgram Speech-to-Text (WebSocket)",
+    curl: `curl "wss://api.deepgram.com/v1/listen?model={{MODEL}}&punctuate=true" \\
+      -H "Sec-WebSocket-Protocol: token, {{API_KEY}}" \\
+      -d '{"type":"CloseStream"}'`,
+    responseContentPath: "channel.alternatives[0].transcript",
+    streaming: false,
+  },
+  {
     id: "azure-stt",
     name: "Azure Speech-to-Text",
     curl: `curl -X POST "https://{{REGION}}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US" \\

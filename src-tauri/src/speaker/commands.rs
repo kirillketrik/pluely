@@ -1,5 +1,5 @@
 // Pluely AI Speech Detection, and capture system audio (speaker output) as a stream of f32 samples.
-use crate::speaker::{AudioDevice, SpeakerInput};
+use crate::speaker::{AudioApp, AudioDevice, AudioSource, SpeakerInput};
 use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use futures_util::StreamExt;
@@ -49,6 +49,7 @@ pub async fn start_system_audio_capture(
     app: AppHandle,
     vad_config: Option<VadConfig>,
     device_id: Option<String>,
+    sources: Option<Vec<AudioSource>>,
 ) -> Result<(), String> {
     let state = app.state::<crate::AudioState>();
 
@@ -74,12 +75,20 @@ pub async fn start_system_audio_capture(
         *vad_cfg = config;
     }
 
-    let input = SpeakerInput::new_with_device(device_id).map_err(|e| {
+    let input = match sources.filter(|s| !s.is_empty()) {
+        Some(sources) => SpeakerInput::new_with_sources(sources),
+        None => SpeakerInput::new_with_device(device_id),
+    }
+    .map_err(|e| {
         error!("Failed to create speaker input: {}", e);
         format!("Failed to access system audio: {}", e)
     })?;
 
     let stream = input.stream();
+    if let Some(reason) = stream.init_error() {
+        error!("System audio capture could not start: {}", reason);
+        return Err(format!("Could not capture system audio: {}", reason));
+    }
     let sr = stream.sample_rate();
 
     // Validate sample rate
@@ -618,9 +627,42 @@ pub fn get_input_devices() -> Result<Vec<AudioDevice>, String> {
 }
 
 #[tauri::command]
+pub fn get_audio_apps() -> Result<Vec<AudioApp>, String> {
+    crate::speaker::list_audio_apps().map_err(|e| {
+        error!("Failed to list applications: {}", e);
+        format!("Failed to list applications: {}", e)
+    })
+}
+
+#[tauri::command]
 pub fn get_output_devices() -> Result<Vec<AudioDevice>, String> {
     crate::speaker::list_output_devices().map_err(|e| {
         error!("Failed to get output devices: {}", e);
         format!("Failed to get output devices: {}", e)
     })
+}
+
+/// Processes that have an audio session on an output device, with the loudest
+/// level seen over about a second.
+#[tauri::command]
+pub async fn get_playing_audio() -> Result<Vec<crate::speaker::PlayingAudio>, String> {
+    tokio::task::spawn_blocking(crate::speaker::list_playing_audio)
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| {
+            error!("Failed to list audio sessions: {}", e);
+            format!("Failed to list audio sessions: {:#}", e)
+        })
+}
+
+/// Listens to each source for a few seconds and reports how loud it was.
+#[tauri::command]
+pub async fn probe_audio_sources(
+    sources: Vec<AudioSource>,
+    seconds: Option<u64>,
+) -> Result<Vec<crate::speaker::SourceProbe>, String> {
+    let seconds = seconds.unwrap_or(3).clamp(1, 10);
+    tokio::task::spawn_blocking(move || crate::speaker::probe_sources(sources, seconds))
+        .await
+        .map_err(|e| e.to_string())
 }

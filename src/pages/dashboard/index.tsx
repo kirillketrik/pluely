@@ -4,14 +4,16 @@ import { GetLicense } from "@/components";
 import { PluelyApiSetup, Usage } from "./components";
 import { PageLayout } from "@/layouts";
 import { useApp } from "@/contexts";
+import { usePluelyBackend } from "@/hooks/usePluelyBackend";
 
 const Dashboard = () => {
   const { hasActiveLicense } = useApp();
+  const pluelyBackend = usePluelyBackend();
   const [activity, setActivity] = useState<any>(null);
   const [loadingActivity, setLoadingActivity] = useState(false);
 
   const fetchActivity = useCallback(async () => {
-    if (!hasActiveLicense) {
+    if (!hasActiveLicense || !pluelyBackend) {
       setActivity({ data: [], total_tokens_used: 0 });
       return;
     }
@@ -29,15 +31,15 @@ const Dashboard = () => {
     } finally {
       setLoadingActivity(false);
     }
-  }, [hasActiveLicense]);
+  }, [hasActiveLicense, pluelyBackend]);
 
   useEffect(() => {
-    if (hasActiveLicense) {
+    if (hasActiveLicense && pluelyBackend) {
       fetchActivity();
     } else {
       setActivity(null);
     }
-  }, [fetchActivity, hasActiveLicense]);
+  }, [fetchActivity, hasActiveLicense, pluelyBackend]);
 
   const activityData =
     activity && Array.isArray(activity.data) ? activity.data : [];
@@ -50,17 +52,28 @@ const Dashboard = () => {
     <PageLayout
       title="Dashboard"
       description="Pluely license to unlock faster responses, quicker support and premium features."
-      rightSlot={!hasActiveLicense ? <GetLicense /> : null}
+      rightSlot={!hasActiveLicense && pluelyBackend ? <GetLicense /> : null}
     >
-      {/* Pluely API Setup */}
-      <PluelyApiSetup />
+      {pluelyBackend ? (
+        <>
+          {/* Pluely API Setup */}
+          <PluelyApiSetup />
 
-      <Usage
-        loading={loadingActivity}
-        onRefresh={fetchActivity}
-        data={activityData}
-        totalTokens={totalTokens}
-      />
+          <Usage
+            loading={loadingActivity}
+            onRefresh={fetchActivity}
+            data={activityData}
+            totalTokens={totalTokens}
+          />
+        </>
+      ) : (
+        pluelyBackend === false && (
+          <div className="text-sm text-muted-foreground bg-muted/40 p-4 rounded-md">
+            The hosted Pluely API is not configured in this build. Add your own
+            AI and speech-to-text providers in Dev space.
+          </div>
+        )
+      )}
     </PageLayout>
   );
 };

@@ -19,6 +19,7 @@ import {
   generateMessageId,
 } from "@/lib";
 import { Message } from "@/types/completion";
+import { getAudioSourcesForCapture } from "@/lib/storage/audio-sources.storage";
 
 // VAD Configuration interface matching Rust
 export interface VadConfig {
@@ -73,6 +74,7 @@ export function useSystemAudio() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [lastTranscription, setLastTranscription] = useState<string>("");
+  const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [lastAIResponse, setLastAIResponse] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [setupRequired, setSetupRequired] = useState<boolean>(false);
@@ -227,6 +229,10 @@ export function useSystemAudio() {
             if (!capturing) return;
 
             const base64Audio = event.payload as string;
+            // Keep the last 5 clips on disk to debug what was actually captured
+            invoke("save_debug_audio", { audioBase64: base64Audio }).catch(
+              (e) => console.warn("Could not save debug audio:", e)
+            );
             // Convert to blob
             const binaryString = atob(base64Audio);
             const bytes = new Uint8Array(binaryString.length);
@@ -257,6 +263,7 @@ export function useSystemAudio() {
               provider: providerConfig,
               selectedProvider: selectedSttProvider,
               audio: audioBlob,
+              onProgress: ({ text }) => setLiveTranscript(text),
             });
 
             const timeoutPromise = new Promise<string>((_, reject) => {
@@ -300,6 +307,7 @@ export function useSystemAudio() {
           } catch (err) {
             setError("Failed to process speech");
           } finally {
+            setLiveTranscript("");
             setIsProcessing(false);
           }
         });
@@ -442,6 +450,7 @@ export function useSystemAudio() {
       await invoke<string>("start_system_audio_capture", {
         vadConfig: vadConfig,
         deviceId: deviceId,
+        sources: getAudioSourcesForCapture(),
       });
     } catch (err) {
       console.error("Failed to start continuous recording:", err);
@@ -597,6 +606,7 @@ export function useSystemAudio() {
       await invoke<string>("start_system_audio_capture", {
         vadConfig: vadConfig,
         deviceId: deviceId,
+        sources: getAudioSourcesForCapture(),
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -883,6 +893,7 @@ export function useSystemAudio() {
     isProcessing,
     isAIProcessing,
     lastTranscription,
+    liveTranscript,
     lastAIResponse,
     error,
     setupRequired,

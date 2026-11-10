@@ -20,6 +20,13 @@ fn get_app_endpoint() -> Result<String, String> {
     }
 }
 
+/// Whether this build knows the Pluely server (APP_ENDPOINT and API_ACCESS_KEY).
+/// Forks without those build-time values hide the server-backed features.
+#[tauri::command]
+pub fn pluely_backend_available() -> bool {
+    get_app_endpoint().is_ok() && get_api_access_key().is_ok()
+}
+
 fn get_api_access_key() -> Result<String, String> {
     if let Ok(key) = env::var("API_ACCESS_KEY") {
         return Ok(key);

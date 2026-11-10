@@ -3,6 +3,7 @@ mod activate;
 mod api;
 mod capture;
 mod db;
+mod debug_audio;
 mod shortcuts;
 mod window;
 use std::sync::{Arc, Mutex};
@@ -115,6 +116,11 @@ pub fn run() {
             speaker::get_audio_sample_rate,
             speaker::get_input_devices,
             speaker::get_output_devices,
+            speaker::get_audio_apps,
+            speaker::probe_audio_sources,
+            speaker::get_playing_audio,
+            api::pluely_backend_available,
+            debug_audio::save_debug_audio,
         ])
         .setup(|app| {
             // Setup main window positioning

@@ -24,6 +24,7 @@ import {
 import { DeleteSystemPrompt } from "./Delete";
 import { CreateEditDialog } from "./CreateEditDialog";
 import { PluelyPrompts } from "./PluelyPrompts";
+import { usePluelyBackend } from "@/hooks/usePluelyBackend";
 import { useState } from "react";
 import { PageLayout } from "@/layouts";
 
@@ -40,6 +41,7 @@ const SystemPrompts = () => {
     clearError,
   } = useSystemPrompts();
 
+  const pluelyBackend = usePluelyBackend();
   const [search, setSearch] = useState("");
   const [isCreateEditDialogOpen, setIsCreateEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -295,7 +297,7 @@ const SystemPrompts = () => {
       />
 
       {/* Pluely Default Prompts */}
-      <PluelyPrompts />
+      {pluelyBackend && <PluelyPrompts />}
     </PageLayout>
   );
 };

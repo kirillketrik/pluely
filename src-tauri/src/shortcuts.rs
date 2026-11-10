@@ -202,6 +202,15 @@ fn handle_toggle_window<R: Runtime>(app: &AppHandle<R>) {
             eprintln!("Failed to emit toggle-window-visibility event: {}", e);
         }
 
+        let icon_event = if *is_hidden {
+            "handle-app-icon-on-hide"
+        } else {
+            "handle-app-icon-on-show"
+        };
+        if let Err(e) = window.emit(icon_event, json!({})) {
+            eprintln!("Failed to emit {} event: {}", icon_event, e);
+        }
+
         if !*is_hidden {
             if let Err(e) = window.show() {
                 eprintln!("Failed to show window: {}", e);
@@ -228,9 +237,11 @@ fn handle_toggle_window<R: Runtime>(app: &AppHandle<R>) {
             if let Err(e) = window.hide() {
                 eprintln!("Failed to hide window: {}", e);
             }
+            let _ = window.emit("handle-app-icon-on-hide", json!({}));
         }
         Ok(false) => {
             // Window is hidden, show it and handle app icon based on user settings
+            let _ = window.emit("handle-app-icon-on-show", json!({}));
             if let Err(e) = window.show() {
                 eprintln!("Failed to show window: {}", e);
             }

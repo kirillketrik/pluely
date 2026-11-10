@@ -30,6 +30,36 @@ pub struct AudioDevice {
     pub is_default: bool,
 }
 
+/// One audio source that can be captured and mixed with others.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AudioSource {
+    /// Everything played through an output device (system loopback).
+    Output { id: Option<String> },
+    /// A microphone / capture device.
+    Microphone { id: Option<String> },
+    /// Audio of one application (and its child processes), by process id.
+    App { pid: u32 },
+}
+
+/// A running application with a visible window that can be captured.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioApp {
+    pub pid: u32,
+    pub name: String,
+    pub titles: Vec<String>,
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn list_audio_apps() -> Result<Vec<AudioApp>> {
+    windows::list_audio_apps()
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(crate) fn list_audio_apps() -> Result<Vec<AudioApp>> {
+    Ok(vec![])
+}
+
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 pub(crate) fn list_input_devices() -> Result<Vec<AudioDevice>> {
     #[cfg(target_os = "macos")]
@@ -83,6 +113,19 @@ impl SpeakerInput {
     pub fn new_with_device(device_id: Option<String>) -> Result<Self> {
         let inner = PlatformSpeakerInput::new(device_id)?;
         Ok(Self { inner })
+    }
+
+    // Creates a speaker input that mixes several sources (Windows only; other
+    // platforms fall back to the default system audio).
+    #[cfg(target_os = "windows")]
+    pub fn new_with_sources(sources: Vec<AudioSource>) -> Result<Self> {
+        let inner = PlatformSpeakerInput::with_sources(sources)?;
+        Ok(Self { inner })
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn new_with_sources(_sources: Vec<AudioSource>) -> Result<Self> {
+        Self::new_with_device(None)
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
@@ -145,4 +188,69 @@ impl SpeakerStream {
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
         0
     }
+
+    // Why capture could not start, if that is what happened (Windows only).
+    pub fn init_error(&self) -> Option<String> {
+        #[cfg(target_os = "windows")]
+        return self.inner.init_error();
+
+        #[cfg(not(target_os = "windows"))]
+        None
+    }
+}
+
+/// Result of listening to one source for a moment.
+#[derive(Debug, Clone, Serialize)]
+pub struct SourceProbe {
+    pub source: AudioSource,
+    pub started: bool,
+    /// How the source was opened (format, timing, or a fallback).
+    pub mode: Option<String>,
+    pub error: Option<String>,
+    pub samples: usize,
+    pub peak: f32,
+    pub rms: f32,
+}
+
+/// A process that has an audio session on an output device.
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayingAudio {
+    pub pid: u32,
+    pub name: String,
+    pub device: String,
+    /// The session is rendering sound right now.
+    pub active: bool,
+    /// Loudest level seen while listening, 0.0 to 1.0.
+    pub peak: f32,
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn list_playing_audio() -> Result<Vec<PlayingAudio>> {
+    windows::list_playing_audio()
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(crate) fn list_playing_audio() -> Result<Vec<PlayingAudio>> {
+    Ok(vec![])
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn probe_sources(sources: Vec<AudioSource>, seconds: u64) -> Vec<SourceProbe> {
+    windows::probe_sources(sources, seconds)
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(crate) fn probe_sources(sources: Vec<AudioSource>, _seconds: u64) -> Vec<SourceProbe> {
+    sources
+        .into_iter()
+        .map(|source| SourceProbe {
+            source,
+            started: false,
+            mode: None,
+            error: Some("Source test is only available on Windows".to_string()),
+            samples: 0,
+            peak: 0.0,
+            rms: 0.0,
+        })
+        .collect()
 }

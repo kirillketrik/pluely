@@ -33,6 +33,7 @@ export const SystemAudio = (props: useSystemAudioType) => {
     isProcessing,
     isAIProcessing,
     lastTranscription,
+    liveTranscript,
     lastAIResponse,
     error,
     setupRequired,
@@ -346,6 +347,19 @@ export const SystemAudio = (props: useSystemAudioType) => {
                       onStopAndSend={manualStopAndSend}
                       onIgnore={ignoreContinuousRecording}
                     />
+
+                    {/* Live transcription (WebSocket providers) */}
+                    {isProcessing && liveTranscript && (
+                      <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+                        <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                          <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                          Transcribing live
+                        </div>
+                        <p className="text-xs leading-relaxed">
+                          {liveTranscript}
+                        </p>
+                      </div>
+                    )}
 
                     {/* AI Response */}
                     <ResultsSection

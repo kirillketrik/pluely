@@ -149,13 +149,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const getActiveLicenseStatus = async () => {
-    const response: { is_active: boolean; is_dev_license: boolean } =
-      await invoke("validate_license_api");
+    // Fork: local features are always unlocked, no license server check.
+    const response = { is_active: true, is_dev_license: false };
     setHasActiveLicense(response.is_active);
-
-    if (response?.is_dev_license) {
-      setPluelyApiEnabled(false);
-    }
 
     // Check if the auto configs are enabled
     const autoConfigsEnabled = localStorage.getItem("auto-configs-enabled");
@@ -353,9 +349,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const applyCustomizableSettings = async () => {
       try {
         await Promise.all([
-          invoke("set_app_icon_visibility", {
-            visible: customizable.appIcon.isVisible,
-          }),
+          // Stealth mode hides the icon only while the window is hidden
+          // (see handle-app-icon-on-hide); the window is visible here.
+          invoke("set_app_icon_visibility", { visible: true }),
           invoke("set_always_on_top", {
             enabled: customizable.alwaysOnTop.isEnabled,
           }),
@@ -572,7 +568,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const newState = updateAppIconVisibility(isVisible);
     setCustomizable(newState);
     try {
-      await invoke("set_app_icon_visibility", { visible: isVisible });
+      // Window is visible while the setting is changed; the icon is hidden
+      // later by handle-app-icon-on-hide when the user has stealth mode on.
+      await invoke("set_app_icon_visibility", { visible: true });
       loadData();
     } catch (error) {
       console.error("Failed to toggle app icon visibility:", error);
