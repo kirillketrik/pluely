@@ -37,6 +37,16 @@ The Tauri configuration requests all supported bundle formats. Linux packages ar
 npm run tauri build -- --bundles deb
 ```
 
+### Arch Linux package
+
+This repository includes a `PKGBUILD` for building a native Arch package without running the AppImage bundler. From an Arch Linux checkout, run:
+
+```bash
+makepkg -si
+```
+
+The package installs the app binary, desktop entry, and icon. `makepkg` installs the build dependencies declared in the PKGBUILD when prompted. Build dependencies include Node.js, npm, Rust, and Tauri's Linux development libraries; runtime dependencies include WebKitGTK and PulseAudio.
+
 To run the desktop app in development mode:
 
 ```bash
