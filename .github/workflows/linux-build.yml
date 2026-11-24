@@ -52,7 +52,7 @@ jobs:
         run: npm ci
 
       - name: Build Linux packages
-        run: npm run tauri build -- --bundles deb,rpm,appimage
+        run: npm run tauri build -- --bundles deb,rpm,appimage --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
