@@ -55,7 +55,12 @@ pub(crate) fn list_audio_apps() -> Result<Vec<AudioApp>> {
     windows::list_audio_apps()
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+pub(crate) fn list_audio_apps() -> Result<Vec<AudioApp>> {
+    linux::list_audio_apps()
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 pub(crate) fn list_audio_apps() -> Result<Vec<AudioApp>> {
     Ok(vec![])
 }
@@ -115,15 +120,21 @@ impl SpeakerInput {
         Ok(Self { inner })
     }
 
-    // Creates a speaker input that mixes several sources (Windows only; other
-    // platforms fall back to the default system audio).
+    // Creates a speaker input that mixes several sources on platforms that
+    // support source selection.
     #[cfg(target_os = "windows")]
     pub fn new_with_sources(sources: Vec<AudioSource>) -> Result<Self> {
         let inner = PlatformSpeakerInput::with_sources(sources)?;
         Ok(Self { inner })
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    pub fn new_with_sources(sources: Vec<AudioSource>) -> Result<Self> {
+        let inner = PlatformSpeakerInput::with_sources(sources)?;
+        Ok(Self { inner })
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     pub fn new_with_sources(_sources: Vec<AudioSource>) -> Result<Self> {
         Self::new_with_device(None)
     }
@@ -222,6 +233,8 @@ pub struct PlayingAudio {
     pub active: bool,
     /// Loudest level seen while listening, 0.0 to 1.0.
     pub peak: f32,
+    /// Whether `peak` is a measured level rather than an unavailable value.
+    pub level_known: bool,
 }
 
 #[cfg(target_os = "windows")]
@@ -229,7 +242,12 @@ pub(crate) fn list_playing_audio() -> Result<Vec<PlayingAudio>> {
     windows::list_playing_audio()
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+pub(crate) fn list_playing_audio() -> Result<Vec<PlayingAudio>> {
+    linux::list_playing_audio()
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 pub(crate) fn list_playing_audio() -> Result<Vec<PlayingAudio>> {
     Ok(vec![])
 }
@@ -239,7 +257,12 @@ pub(crate) fn probe_sources(sources: Vec<AudioSource>, seconds: u64) -> Vec<Sour
     windows::probe_sources(sources, seconds)
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+pub(crate) fn probe_sources(sources: Vec<AudioSource>, seconds: u64) -> Vec<SourceProbe> {
+    linux::probe_sources(sources, seconds)
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 pub(crate) fn probe_sources(sources: Vec<AudioSource>, _seconds: u64) -> Vec<SourceProbe> {
     sources
         .into_iter()

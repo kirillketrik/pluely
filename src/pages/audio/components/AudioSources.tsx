@@ -31,6 +31,7 @@ type Playing = {
   device: string;
   active: boolean;
   peak: number;
+  level_known: boolean;
 };
 
 const SILENT_PEAK = 0.002;
@@ -189,7 +190,11 @@ export const AudioSources = () => {
   );
 
   const playingState = (p: Playing) =>
-    p.peak >= SILENT_PEAK
+    !p.level_known
+      ? p.active
+        ? "active stream"
+        : "paused"
+      : p.peak >= SILENT_PEAK
       ? "making sound"
       : p.active
       ? "open but silent"
@@ -308,11 +313,10 @@ export const AudioSources = () => {
           {probes.some((p) => p.started && p.peak < SILENT_PEAK) && (
             <div className="text-xs text-muted-foreground">
               Silent means the source opened but no sound went through it. Use
-              “Find what is playing” to see which process is really making the
-              sound. If that process shows a level there and is still silent
-              here, security software (for example Kaspersky’s audio
-              protection) is feeding Pluely silence: add pluely.exe to its
-              trusted applications and restart Pluely.
+              “Find what is playing” to see which process has an audio stream,
+              then refresh and select that process. On Linux, app capture uses
+              the PulseAudio-compatible interface exposed by PulseAudio or
+              PipeWire.
             </div>
           )}
         </div>
@@ -328,17 +332,16 @@ export const AudioSources = () => {
             variant="outline"
             onClick={scanPlaying}
             disabled={scanning}
-            title="List the processes Windows says are producing sound (about 1 second)"
+            title="List the audio streams reported by the sound server"
           >
             {scanning ? "Listening…" : "Find what is playing"}
           </Button>
         </div>
         {playing === null && (
           <div className="text-xs text-muted-foreground">
-            Start the sound, then press the button. It shows which process
-            Windows says is producing it and on which output. Tick that process
-            to capture it exactly, even when it is a helper process of your
-            browser.
+            Start the sound, then press the button. It shows audio streams and
+            their output devices. Select a process to capture its application
+            audio.
           </div>
         )}
         {playing !== null && playing.length === 0 && (
@@ -360,7 +363,9 @@ export const AudioSources = () => {
             />,
             `${p.name} (pid ${p.pid})`,
             `${p.device} · ${playingState(p)}`,
-            <Level peak={p.peak} className="w-16 shrink-0" />
+            p.level_known ? (
+              <Level peak={p.peak} className="w-16 shrink-0" />
+            ) : undefined
           )
         )}
       </div>
@@ -415,13 +420,13 @@ export const AudioSources = () => {
 
       <div className="text-xs text-muted-foreground/70 space-y-1">
         <p>
-          💡 <strong>Browsers:</strong> Windows can capture audio per
-          application, not per tab. Selecting a browser captures all of its
-          audio. To isolate one tab, play it in a separate browser window or
-          profile and pick that one.
+          💡 <strong>Browsers:</strong> Audio capture is per process, not per
+          tab. Selecting a browser process captures all audio streams from that
+          process. Browser helper processes may appear separately.
         </p>
         <p>
-          Per-application capture needs Windows 10 (version 2004) or newer.
+          On Linux, selected application streams are routed through a temporary
+          virtual output while their sound is sent back to the original device.
           Changes apply the next time capture starts.
         </p>
       </div>

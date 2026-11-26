@@ -5,7 +5,7 @@ Pluely is a desktop AI assistant built with Tauri, React, TypeScript, and Rust. 
 ## Features
 
 - **Ask:** chat with configured AI providers, include screenshots, and attach files for context.
-- **Listen:** capture microphone and system audio, transcribe speech, and request AI responses during a conversation.
+- **Listen:** capture microphone and system audio, including selected application streams on Linux through PulseAudio or PipeWire-Pulse; transcribe speech and request AI responses during a conversation.
 - **Dashboard:** review chats and listening sessions, manage prompts and files, and configure providers, models, shortcuts, and application settings.
 - **Provider options:** use the hosted Pluely models where available, configure compatible services with request templates, or connect supported local AI command-line tools.
 - **Local storage:** conversation history and settings are stored on the device using SQLite and browser storage.

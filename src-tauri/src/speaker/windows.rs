@@ -978,6 +978,7 @@ pub fn list_playing_audio() -> Result<Vec<PlayingAudio>> {
                 device: session.device,
                 active: session.active,
                 peak: session.peak,
+                level_known: true,
             }),
         }
     }
